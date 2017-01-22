@@ -1,0 +1,106 @@
+name:                csl
+version:             0.1.0.0
+synopsis:            Initial project template from stack
+description:         Please see README.md
+homepage:            https://github.com/githubuser/csl#readme
+license:             BSD3
+license-file:        LICENSE
+author:              Author name here
+maintainer:          example@example.com
+copyright:           2017 Author name here
+category:            Web
+build-type:          Simple
+extra-source-files:  README.md
+cabal-version:       >=1.10
+
+library
+  hs-source-dirs:      src
+  default-extensions:  FlexibleContexts
+  exposed-modules:     Poets.Contracts
+  other-modules:       Poets.Conc
+                     , Poets.Config
+                     , Poets.Contracts.Base
+                     , Poets.Contracts.Language.CSL
+                     , Poets.Contracts.Language.CSL.AST
+                     , Poets.Contracts.Language.CSL.AST.Base
+                     , Poets.Contracts.Language.CSL.AST.Clause
+                     , Poets.Contracts.Language.CSL.AST.Exp
+                     , Poets.Contracts.Language.CSL.AST.RecordFieldName
+                     , Poets.Contracts.Language.CSL.AST.Type
+                     , Poets.Contracts.Language.CSL.Analysis.Concludable
+                     , Poets.Contracts.Language.CSL.Analysis.ExpectedTransactions
+                     , Poets.Contracts.Language.CSL.Analysis.Guardedness
+                     , Poets.Contracts.Language.CSL.BuiltIn
+                     , Poets.Contracts.Language.CSL.Desugar
+                     , Poets.Contracts.Language.CSL.Evaluation.Evaluator
+                     , Poets.Contracts.Language.CSL.Evaluation.Substitute
+                     , Poets.Contracts.Language.CSL.Exceptions
+                     , Poets.Contracts.Language.CSL.Interpreter
+                     , Poets.Contracts.Language.CSL.Parser
+                     , Poets.Contracts.Language.CSL.Render
+                     , Poets.Contracts.Language.CSL.TypeChecker
+                     , Poets.Contracts.Language.CSL.Typing.Inference
+                     , Poets.Contracts.Language.CSL.Typing.Match
+                     , Poets.Contracts.Language.CSL.Typing.Rename
+                     , Poets.Contracts.Language.CSL.Typing.Simplify
+                     , Poets.Contracts.Language.CSL.Typing.TypeInferer
+                     , Poets.Contracts.Repository
+                     , Poets.Data
+                     , Poets.Data.Render
+                     , Poets.Data.Serialize
+                     , Poets.Data.Type
+                     , Poets.Data.Type.Parser
+                     , Poets.Data.Type.Render
+                     , Poets.Data.Type.Utils
+                     , Poets.Data.Value
+                     , Poets.Data.Value.Duration
+                     , Poets.Data.Value.Serialize
+                     , Poets.Data.Value.TypeChecker
+                     , Poets.Data.Value.Utils
+                     , Poets.EntityStore
+                     , Poets.EventLog
+                     , Poets.EventLog.Names
+                     , Poets.Logging
+
+  build-depends:       base
+                     , containers
+                     , mtl
+                     , wl-pprint
+                     , directory
+                     , filepath
+                     , equivalence
+                     , template-haskell
+                     , IndentParser
+                     , GraphSCC
+                     , datetime
+                     , xml
+                     , network
+                     , hslogger
+                     , ConfigFile
+                     , parsec
+                     , MissingH
+                     , time
+                     , array
+                     , compdata
+  default-language:    Haskell2010
+
+executable csl-exe
+  hs-source-dirs:      app
+  main-is:             Main.hs
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  build-depends:       base
+                     , csl
+  default-language:    Haskell2010
+
+test-suite csl-test
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      test
+  main-is:             Spec.hs
+  build-depends:       base
+                     , csl
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  default-language:    Haskell2010
+
+source-repository head
+  type:     git
+  location: https://github.com/githubuser/csl
