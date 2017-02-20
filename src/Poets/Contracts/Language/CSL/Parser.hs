@@ -242,9 +242,9 @@ clauseFactor = (parens clause <?> "grouping") <|>
                (caseClause <?> "case split") <|>
                (instantiateClause <?> "template instantiation")
     where exp' :: Parser ClausePos
-          exp' = undefined -- fmap deepInject4 exp
+          exp' = fmap deepInject exp
           pexp' :: Parser ClausePos
-          pexp' = undefined -- fmap deepInject4 pexp
+          pexp' = fmap deepInject pexp
           -- The trivially fulfiled clause
           fulfilmentClause :: Parser ClausePos
           fulfilmentClause = do
