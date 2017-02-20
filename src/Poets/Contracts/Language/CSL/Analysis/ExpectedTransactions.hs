@@ -101,7 +101,7 @@ getTPs' :: GetTPs f f => Term f -> SubTypeRelation -> [Event] -> Predefined
 getTPs' c = getTPs (unTerm c)
 
 -- |Small-step instance for (core) clauses.
-instance (CoreClause :<: c, VUnit :<: c, Val :<: c, CoreExp :<: c, (VUnit :+: Val :+: CoreExp) :<: c, Traversable c, GetTPs c c)
+instance (CoreClause :<: c, VUnit :<: c, Val :<: c, CoreExp :<: c, (VUnit :+: Val :+: CoreExp) :<: c, ExprCoreSig :<: c, Traversable c, GetTPs c c)
     => GetTPs CoreClause c where
     getTPs c isSubType events pDef baseTime =
         case c of
@@ -158,7 +158,7 @@ instance (CoreClause :<: c, VUnit :<: c, Val :<: c, CoreExp :<: c, (VUnit :+: Va
                 substFields b e =
                     let s :: Subst ConExprSig Var = Map.map iRecordFieldName $ Map.fromList b
                         Just (e' :: Term (VUnit :+: Val :+: CoreExp)) = appSigFunM proj $ e
-                        e'' :: Term ConExprSig = undefined -- _deepInject3 e'
+                        e'' :: Term ConExprSig = deepInject e'
                     in appSubst s e''
 
 -- Dummy instance

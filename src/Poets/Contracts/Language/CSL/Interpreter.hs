@@ -146,7 +146,7 @@ instance (Step f h, Step g h) => Step (f :+: g) h where
 instance HasVars CoreClause Var where
 
 -- |Small-step instance for (core) clauses.
-instance (CoreClause :<: c, Step c c, VUnit :<: c, Val :<: c, CoreExp :<: c,
+instance (CoreClause :<: c, Step c c, VUnit :<: c, Val :<: c, CoreExp :<: c, ExprCoreSig :<: c,
           HasVars c Var, Traversable c) => Step CoreClause c where
     step trTimeStamp tr c = do
       trType <- either runTimeError return $ extractTransactionType tr
@@ -343,7 +343,7 @@ instance Step CoreExp f where
     step _ _ _ = runTimeError "Unexpected CoreExp in step"
 
 -- |Given a new time, update a deadline.
-updateDeadline :: (VUnit :<: f, Val :<: f, CoreExp :<: f)
+updateDeadline :: (VUnit :<: f, Val :<: f, CoreExp :<: f, ExprCoreSig :<: f)
                   => DateTime -> Deadline (Term f) -> IM f (Deadline (Term f))
 updateDeadline newTime d = do
   oldTime <- getTime
@@ -354,7 +354,7 @@ updateDeadline newTime d = do
 
 -- |Unfold the definition of a template by substituting (party) values into the
 -- body of the template.
-unfoldInstantiation :: (SubstC f f, SubstP f f, Val :<: f,
+unfoldInstantiation :: (SubstC f f, SubstP f f, Val :<: f, ExprCoreSig :<: f,
                         VUnit :<: f, CoreExp :<: f)
                        => TemplateName -> [Term f] -> [Term f] -> IM f (Term f)
 unfoldInstantiation tName args partyArgs = do
@@ -382,7 +382,7 @@ instance (Unfold f h, Unfold g h) => Unfold (f :+: g) h where
     unf (Inr x) = unf x
 
 -- |Clause unfolding for (core) clauses.
-instance (CoreClause :<: c, Unfold c c, VUnit :<: c, Val :<: c, CoreExp :<: c,
+instance (CoreClause :<: c, Unfold c c, VUnit :<: c, Val :<: c, CoreExp :<: c, ExprCoreSig :<: c,
           HasVars c Var, Traversable c) => Unfold CoreClause c where
     unf c@Fulfilment{} = return (inject c)
     unf c@Obligation{} = return (inject c)
@@ -462,7 +462,7 @@ unfoldClause r = do
 --------------------------------------------------------------------------------
 
 -- |Evaluate a CSL expression inside the IM monad.
-evalExprIM :: (Val :<: f, VUnit :<: f, CoreExp :<: f) => Term f -> IM f Poets.Data.Value
+evalExprIM :: (Val :<: f, VUnit :<: f, CoreExp :<: f, ExprCoreSig :<: f) => Term f -> IM f Poets.Data.Value
 evalExprIM e = do
   isSubType <- asks intIsSubType
   pDef <- asks intPredefined
@@ -470,7 +470,7 @@ evalExprIM e = do
   either throwError return (evalExpr' isSubType events pDef e)
 
 -- |Evaluate a deadline expression inside the IM monad.
-evalDeadlineIM :: (Val :<: f, VUnit :<: f, CoreExp :<: f)
+evalDeadlineIM :: (Val :<: f, VUnit :<: f, CoreExp :<: f, ExprCoreSig :<: f)
                   => Deadline (Term f) -> IM f (DateTime, DateTime)
 evalDeadlineIM d = do
   isSubType <- asks intIsSubType
@@ -747,24 +747,23 @@ buildEnvRes isSubType events pDef c = do
   return (env, Right $ closureClause cl)
 
 -- |Evaluate a CSL expression to a CSL value.
-evalExpr :: (VUnit :<: f, Val :<: f, CoreExp :<: f) =>
+evalExpr :: (VUnit :<: f, Val :<: f, CoreExp :<: f, ExprCoreSig :<: f) =>
             SubTypeRelation -- ^Sub type relation.
          -> [Event] -- ^The event log.
          -> Predefined -- ^Predefined values/expressions.
          -> Term f -- ^Expression to evaluate.
          -> Either CSLError AST.Value
 evalExpr isSubType events pDef e' =
-  undefined
-    -- case deepProject3 e' of
-    --   Just (e :: ExprCore) ->
-    --       either (throwError . RunTimeError)
-    --              return
-    --              (evalTerm (preVals pDef events) isSubType (inline (preExps pDef) e))
-    --   Nothing ->
-    --       Left $ RunTimeError "Expected core expression in evalExpr"
+    case deepProject e' of
+      Just (e :: ExprCore) ->
+          either (throwError . RunTimeError)
+                 return
+                 (evalTerm (preVals pDef events) isSubType (inline (preExps pDef) e))
+      Nothing ->
+          Left $ RunTimeError "Expected core expression in evalExpr"
 
 -- |Evaluate a CSL expression to a POETS (i.e., non-functional) value.
-evalExpr' :: (VUnit :<: f, Val :<: f, CoreExp :<: f) =>
+evalExpr' :: (VUnit :<: f, Val :<: f, CoreExp :<: f, ExprCoreSig :<: f) =>
              SubTypeRelation -- ^Sub type relation.
           -> [Event] -- ^The event log.
           -> Predefined -- ^Predefined values/expressions.
@@ -778,7 +777,7 @@ evalExpr' isSubType events pDef e = do
 
 -- |Evaluate a CSL deadline expression. The returned pair is the lower and upper
 -- bound of the deadline, calculated w.r.t. the supplied base time.
-evalDeadline :: (VUnit :<: f, Val :<: f, CoreExp :<: f) =>
+evalDeadline :: (VUnit :<: f, Val :<: f, CoreExp :<: f, ExprCoreSig :<: f) =>
                 SubTypeRelation -- ^Sub type relation.
              -> [Event] -- ^The event log.
              -> Predefined -- ^Predefined values/expressions.
@@ -798,6 +797,7 @@ evalDeadline isSubType events pDef dt Deadline{deadlineWithin = e1,
 -- is very ad hoc.
 normalizeExpr :: (Evaluator f ValueSig,
                   Val :<: f, VUnit :<: f, CoreExp :<: f, EqF f,
+                  VUnit :+: Val :<: f,
                   Traversable f, HasVars f Var) =>
                  SubTypeRelation -- ^Sub type relation.
               -> VarEvalEnv -- ^Predefined values.
@@ -810,10 +810,9 @@ normalizeExpr isSubType env fDefs e = fix (transform norm) $ inline fDefs e
                      Left _ ->
                          norm' e
                      Right (val :: AST.Value) ->
-                       undefined
-                         -- case deepProject2 val of
-                         --   Just (v :: Term (VUnit :+: Val)) -> deepInject2 v
-                         --   Nothing                          -> norm' e
+                         case deepProject val of
+                           Just (v :: Term (VUnit :+: Val)) -> deepInject v
+                           Nothing                          -> norm' e
           -- Ad hoc normalization
           norm' e = normApply e
           normApply e = case project e of
