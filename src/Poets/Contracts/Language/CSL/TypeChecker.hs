@@ -131,7 +131,8 @@ typeCheckClause = typeC . unTerm
 instance (TypeC g g,
           (Val :&: SrcPos) :<: g,
           (VUnit :&: SrcPos) :<: g,
-          (CoreExp :&: SrcPos) :<: g) => TypeC (CoreClause :&: SrcPos) g where
+          (CoreExp :&: SrcPos) :<: g,
+          ExprCorePosSig :<: g) => TypeC (CoreClause :&: SrcPos) g where
     typeC (c :&: pos) = withSrcPos pos $ case c of
             Fulfilment{} ->
               -- Trivially well-typed
@@ -263,7 +264,8 @@ instance (TypeC g g,
 -- |The expressions in a deadline must be of type Duration.
 typeCheckDeadline :: ((Val :&: SrcPos) :<: f,
                       (VUnit :&: SrcPos) :<: f,
-                      (CoreExp :&: SrcPos) :<: f) => Deadline (Term f) -> TM ()
+                      (CoreExp :&: SrcPos) :<: f,
+                      ExprCorePosSig :<: f) => Deadline (Term f) -> TM ()
 typeCheckDeadline Deadline{deadlineWithin = e1, deadlineAfter = e2} = do
   typeCheckExprTM e1 iTDuration
   typeCheckExprTM e2 iTDuration
@@ -272,7 +274,8 @@ typeCheckDeadline Deadline{deadlineWithin = e1, deadlineAfter = e2} = do
 -- |A predicate expression must be of type Boolean.
 typeCheckPredicate :: ((Val :&: SrcPos) :<: f,
                        (VUnit :&: SrcPos) :<: f,
-                       (CoreExp :&: SrcPos) :<: f) => Term f -> TM ()
+                       (CoreExp :&: SrcPos) :<: f,
+                       ExprCorePosSig :<: f) => Term f -> TM ()
 typeCheckPredicate p = typeCheckExprTM p iTBool
 
 -- |Type check a clause definition. This conceptually amounts to type checking
@@ -386,13 +389,14 @@ instance TypeC (CoreExp :&: SrcPos) g where
 -- |Check the type of a CSL expression inside the TM monad.
 typeCheckExprTM :: ((Val :&: SrcPos) :<: f,
                     (VUnit :&: SrcPos) :<: f,
-                    (CoreExp :&: SrcPos) :<: f) => Term f -> Type -> TM ()
+                    (CoreExp :&: SrcPos) :<: f,
+                    ExprCorePosSig :<: f) => Term f -> Type -> TM ()
 typeCheckExprTM e expectedTp = do
   env <- ask
   let vEnv = variableEnv env
   let recEnv = recordEnv env
   let entEnv = entityEnv env
-  case undefined -- deepProject3
+  case deepProject
     e of
     Just e' -> either throwError return (typeCheckExpr recEnv entEnv vEnv e' expectedTp)
     Nothing -> expectedExpError
