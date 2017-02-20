@@ -1,4 +1,6 @@
-{-# LANGUAGE ScopedTypeVariables, FlexibleContexts, TypeOperators #-}
+{-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeOperators       #-}
 --------------------------------------------------------------------------------
 -- |
 -- Module      :  Poets.Data
@@ -26,29 +28,29 @@ module Poets.Data
      module X
     ) where
 
-import Data.Comp as X
-import Data.IORef
-import Data.List (find)
-import qualified Data.Map as Map
-import qualified Data.Set as Set
-import Poets.Conc
-import Poets.Logging
-import Poets.Data.Serialize as X
-import Poets.Data.Type as X
-import Poets.Data.Type.Utils as X
-import Poets.Data.Value as X
-import Poets.Data.Value.Utils as X
-import Poets.Data.Render
-import Poets.Data.Type.Parser
-import Poets.Data.Value.TypeChecker (typeCheckTerm)
-import Poets.Data.Value.Serialize ()
+import           Data.Comp                    as X
+import           Data.IORef
+import           Data.List                    (find)
+import qualified Data.Map                     as Map
+import qualified Data.Set                     as Set
+import           Poets.Conc
+import           Poets.Data.Render
+import           Poets.Data.Serialize         as X
+import           Poets.Data.Type              as X
+import           Poets.Data.Type.Parser
+import           Poets.Data.Type.Utils        as X
+import           Poets.Data.Value             as X
+import           Poets.Data.Value.Serialize   ()
+import           Poets.Data.Value.TypeChecker (typeCheckTerm)
+import           Poets.Data.Value.Utils       as X
+import           Poets.Logging
 
 -- |A handle to the data engine.
 data DataEngine = DataEngine
     {
       -- |Data definitions can be accessed by multiple readers, but only one
       -- writer. Furthermore, writers exclude simultaneous readers.
-      dataEngineLock :: RWLock,
+      dataEngineLock       :: RWLock,
       -- |The in-memory data/record definitions.
       dataEngineRecordEnvR :: IORef POETSRecordEnv
     }

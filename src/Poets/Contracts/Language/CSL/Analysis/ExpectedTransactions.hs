@@ -31,6 +31,7 @@ module Poets.Contracts.Language.CSL.Analysis.ExpectedTransactions
 
 import           Control.Monad.Error                              hiding (mapM)
 import           Data.Comp.Ops
+import           Data.Comp.Sum
 import           Data.Comp.Variables
 import qualified Data.Map                                         as Map
 import           Poets.Contracts.Base
@@ -100,7 +101,7 @@ getTPs' :: GetTPs f f => Term f -> SubTypeRelation -> [Event] -> Predefined
 getTPs' c = getTPs (unTerm c)
 
 -- |Small-step instance for (core) clauses.
-instance (CoreClause :<: c, VUnit :<: c, Val :<: c, CoreExp :<: c, GetTPs c c)
+instance (CoreClause :<: c, VUnit :<: c, Val :<: c, CoreExp :<: c, (VUnit :+: Val :+: CoreExp) :<: c, Traversable c, GetTPs c c)
     => GetTPs CoreClause c where
     getTPs c isSubType events pDef baseTime =
         case c of
@@ -153,11 +154,11 @@ instance (CoreClause :<: c, VUnit :<: c, Val :<: c, CoreExp :<: c, GetTPs c c)
           -- substFields puts in the field names instead of the variables bound
           -- to the field names
           where --substFields :: [(Var,FieldName)] -> Term c -> Constraint
-                substFields :: (VUnit :<: f, Val :<: f, CoreExp :<: f) => [(Var,FieldName)] -> Term f -> Constraint
+                substFields :: (VUnit :<: f, Val :<: f, CoreExp :<: f,  (VUnit :+: Val :+: CoreExp) :<: f, Traversable f) => [(Var,FieldName)] -> Term f -> Constraint
                 substFields b e =
                     let s :: Subst ConExprSig Var = Map.map iRecordFieldName $ Map.fromList b
-                        Just (e' :: Term (VUnit :+: Val :+: CoreExp)) = undefined -- deepProject3 e
-                        e'' :: Term ConExprSig = undefined -- deepInject3 e'
+                        Just (e' :: Term (VUnit :+: Val :+: CoreExp)) = appSigFunM proj $ e
+                        e'' :: Term ConExprSig = undefined -- _deepInject3 e'
                     in appSubst s e''
 
 -- Dummy instance
