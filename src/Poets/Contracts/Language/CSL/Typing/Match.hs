@@ -82,7 +82,7 @@ instance Error MError where
 
 -- |The match monad.
 type MatchM a = forall s. EquivT s (Set AtomicType) AtomicType
-    (ReaderT SrcPos (StateT MatchState (Either MError))) a
+                (ReaderT SrcPos (StateT MatchState (Either MError))) a
 
 -- |This function runs the 'MatchM' monad. It takes a list of sub typing
 -- constraints, and returns the generated substitution.
@@ -90,16 +90,17 @@ runMatchM :: [SubTypeConstraintPos Type]
           -> Int
           -> MatchM ()
           -> Either MError (Subst TypeSig TypeVarId)
-runMatchM cs counter =
-    liftM arr .
-    (`runStateT` state) .
-    (`runReaderT` Nothing) .
-    undefined -- runEquivT Set.singleton Set.union
-    where arr ((),MatchState{msSubst = subst}) = subst
-          state = MatchState{msSubst = Map.empty,
-                             msConstraints = cs,
-                             msVarCounter = 0,
-                             msVarGlobalCounter = counter}
+runMatchM cs counter k =
+    liftM arr $
+    (`runStateT` state) $
+    (`runReaderT` Nothing) $
+    runEquivT Set.singleton Set.union k
+    where
+      arr ((),MatchState{msSubst = subst}) = subst
+      state = MatchState{msSubst = Map.empty,
+                          msConstraints = cs,
+                          msVarCounter = 0,
+                          msVarGlobalCounter = counter}
 
 {-| This function runs the given 'MatchM' monad in the context of the
 given position. This is meant to be the position information of a
@@ -337,7 +338,7 @@ match cs counter = do
 
 
 coerceToAtomic :: Type -> Maybe AtomicType
-coerceToAtomic = undefined -- deepProject2
+coerceToAtomic = deepProject
 
 -- |This function executes a the match algorithm on a single sub typing
 -- constraint.
@@ -377,9 +378,8 @@ matchM' (SubTypeConstraint tp1 tp2) =
               astps <- atomicSubs tp
               atps <- filterM (equivalent (iTVar x)) astps
               if not $ null atps then
-                  undefined
-                   -- subTypeError variance (deepInject2 $ head atps) tp
-                   --              "; cannot construct infinite type"
+                  subTypeError variance (deepInject $ head atps) tp
+                                 "; cannot construct infinite type"
               else do mapM_ expand xs
                       removeClass (iTVar x)
                       return ()
@@ -393,16 +393,15 @@ matchM' (SubTypeConstraint tp1 tp2) =
           -- Generate a list of all atomic sub terms from a given type term
           atomicSubs :: Type -> MatchM [AtomicType]
           atomicSubs tp =
-              undefined
-              -- case deepProject2 tp of
-              --   Just atp ->
-              --       -- The type is it self atomic, so return it
-              --       return [atp]
-              --   _ ->
-              --       -- The type is not atomic, so inspect all sub terms
-              --       case decompose tp :: Decomp TypeSig TypeVarId Type of
-              --         Fun _ args -> liftM concat $ mapM atomicSubs args
-              --         _ -> fail "Error in atomicSubs: expected compound type"
+              case deepProject tp of
+                Just atp ->
+                    -- The type is it self atomic, so return it
+                    return [atp]
+                _ ->
+                    -- The type is not atomic, so inspect all sub terms
+                    case decompose tp :: Decomp TypeSig TypeVarId Type of
+                      Fun _ args -> liftM concat $ mapM atomicSubs args
+                      _ -> fail "Error in atomicSubs: expected compound type"
 
 -- |Simplify a set of (already 'match'ed) sub type constraints into a set of
 -- atomic sub type constraints.
@@ -410,21 +409,20 @@ simplifyM :: Monad m => [SubTypeConstraintPos Type]
           -> m [SubTypeConstraintPos AtomicType]
 simplifyM [] = return []
 simplifyM ((SubTypeConstraint tp1 tp2 :&: pos) : cs) =
-  undefined
-    -- case (deepProject2 tp1, deepProject2 tp2) of
-    --   (Just atp1, Just atp2) -> do
-    --     acs <- simplifyM cs
-    --     return $ (SubTypeConstraint atp1 atp2 :&: pos) : acs
-    --   _ ->
-    --       case (decompose tp1 :: Decomp TypeSig TypeVarId Type,
-    --             decompose tp2 :: Decomp TypeSig TypeVarId Type) of
-    --         (Fun s1 args1, Fun s2 args2) -> do
-    --           when (s1 /= s2)
-    --                (fail $ "Error in simplifyM: " ++
-    --                        "mismatch between type constructors")
-    --           simplifyM (map (\x -> subTypeConstraint x :&: pos)
-    --                          (zip3 (variances s1) args1 args2) ++ cs)
-    --         _ -> fail "Error in simplifyM: expected compound types"
+    case (deepProject tp1, deepProject tp2) of
+      (Just atp1, Just atp2) -> do
+        acs <- simplifyM cs
+        return $ (SubTypeConstraint atp1 atp2 :&: pos) : acs
+      _ ->
+          case (decompose tp1 :: Decomp TypeSig TypeVarId Type,
+                decompose tp2 :: Decomp TypeSig TypeVarId Type) of
+            (Fun s1 args1, Fun s2 args2) -> do
+              when (s1 /= s2)
+                   (fail $ "Error in simplifyM: " ++
+                           "mismatch between type constructors")
+              simplifyM (map (\x -> subTypeConstraint x :&: pos)
+                             (zip3 (variances s1) args1 args2) ++ cs)
+            _ -> fail "Error in simplifyM: expected compound types"
 
 {-| This function reports an error that states that the given
 sub typing constraint cannot be satisfied. The sub typing constraint @t1

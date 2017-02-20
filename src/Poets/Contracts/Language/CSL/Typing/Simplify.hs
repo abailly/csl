@@ -309,7 +309,7 @@ simplify' iter recordEnv pos tp scs fcs ecs ocs = do
                         _      -> pack atp1 atp2 pos)
                  scs2
   let subst3 = checkForEqs scs3
-  let subst4 = Map.map undefined -- deepInject2
+  let subst4 = Map.map deepInject
                subst3 :: TypeSubst
   let scs4 = map (fmap (appSubst subst3)) scs3
   let tp4 = appSubst subst4 tp2
